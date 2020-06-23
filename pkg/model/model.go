@@ -1,5 +1,7 @@
 package model
 
+import "sync"
+
 // User defines internal user object
 type User struct {
 	DistinguishedName string
@@ -8,6 +10,7 @@ type User struct {
 	FirstName         string
 	LastName          string
 	ScimID            string
+	Active            bool
 }
 
 // Group defines internal group object
@@ -16,4 +19,11 @@ type Group struct {
 	DistinguishedName string
 	ScimID            string
 	Members           []string
+}
+
+// IDMap contains mapping between local and external IDs
+type IDMap struct {
+	FilePath     string
+	Mapping      map[string]string
+	MappingMutex sync.RWMutex
 }

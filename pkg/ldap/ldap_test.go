@@ -7,7 +7,16 @@ import (
 )
 
 func TestOpenConnection(t *testing.T) {
-	LoadUsersAndGroups()
+	config := &Config{
+		Host:        "localhost",
+		Port:        389,
+		UserDN:      "cn=admin,dc=example,dc=org",
+		Password:    "admin",
+		UserFilter:  "(|(objectclass=user)(objectclass=person)(objectclass=inetOrgPerson)(objectclass=organizationalPerson))",
+		GroupFilter: "(|(objectclass=posixGroup)(objectclass=group)(objectclass=groupOfNames)(objectclass=groupOfUniqueNames))",
+		BaseDN:      "dc=example,dc=org",
+	}
+	config.LoadUsersAndGroups()
 }
 
 func TestScimIDUpdate(t *testing.T) {
@@ -30,5 +39,12 @@ func TestScimIDUpdate(t *testing.T) {
 		},
 	}
 
-	UpdateScimIDs(modelUsers)
+	config := &Config{
+		Host:     "localhost",
+		Port:     389,
+		UserDN:   "cn=admin,dc=example,dc=org",
+		Password: "admin",
+	}
+	conn, _ := config.GetConnection()
+	UpdateScimIDs(modelUsers, conn)
 }
