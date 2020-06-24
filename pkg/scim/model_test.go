@@ -7,22 +7,25 @@ import (
 )
 
 func TestToJson(t *testing.T) {
-	pathchOp := newPatchOp()
-	pathchOp.Operations = []PatchOperation{
-		{
-			Op: "add",
-			Value: Group{
-				Members: []Member{
-					{
-						Value: "123",
-					},
-					{
-						Value: "234",
-					},
-				},
+	pathchOp := newPatchOp("add", Group{
+		Members: []Member{
+			{
+				Value: "123",
+			},
+			{
+				Value: "234",
 			},
 		},
-	}
+	})
+
+	marshalled, _ := json.Marshal(pathchOp)
+	fmt.Println(string(marshalled))
+}
+
+func TestEmptyValueToJson(t *testing.T) {
+	pathchOp := newPatchOp("replace", Group{
+		Members: []Member{},
+	})
 
 	marshalled, _ := json.Marshal(pathchOp)
 	fmt.Println(string(marshalled))

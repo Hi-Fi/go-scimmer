@@ -39,11 +39,11 @@ var rootCmd = &cobra.Command{
 	Use:   "go-scimmer",
 	Short: "Sync identities from one system to another",
 	Long: `Sync identities from one system to another. This utility is needed
-	when wanting to sync from system that doesn't offer SCIM at all or allows
-	if only to preauthorized systems.
+when wanting to sync from system that doesn't offer SCIM at all or allows
+if only to preauthorized systems.
 
-	Currently supports LDAP as a source. SCIM target needs to support token
-	authentication. `,
+Currently supports LDAP as a source. SCIM target needs to support token
+authentication. `,
 	Run: func(cmd *cobra.Command, args []string) {
 		users, groups := ldapConfig.LoadUsersAndGroups()
 		modelConfig.EnrichUsersAndGroupsWithScimIDs(users, groups)
@@ -72,12 +72,12 @@ func init() {
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	rootCmd.Flags().StringVar(&ldapConfig.Host, "ldap_host", "", "LDAP server host")
+	rootCmd.Flags().StringVar(&ldapConfig.Host, "ldap_host", "localhost", "LDAP server host")
 	rootCmd.Flags().IntVar(&ldapConfig.Port, "ldap_port", 389, "LDAP server host")
 	rootCmd.Flags().StringVar(&ldapConfig.UserDN, "ldap_user", "", "User (DN) to bind to LDAP server. Needs only read righs.")
 	rootCmd.Flags().StringVar(&ldapConfig.Password, "ldap_password", "", "Password for LDAP user")
 	rootCmd.Flags().StringVar(&ldapConfig.ActiveUserAttribute, "ldap_activeuser", "", "Attribute that tells if user is active or not. If empty, all users considered as active")
-	rootCmd.Flags().StringVar(&ldapConfig.ActiveUserValue, "ldap_activeuservalue", "", "Value that means that user is active. Only valid if actiev user attribute is defined")
+	rootCmd.Flags().StringVar(&ldapConfig.ActiveUserValue, "ldap_activeuservalue", "", "Value that means that user is active. Only valid if active user attribute is defined")
 	rootCmd.Flags().StringVar(&ldapConfig.GroupFilter, "ldap_groupfilter", "(|(objectclass=posixGroup)(objectclass=group)(objectclass=groupOfNames)(objectclass=groupOfUniqueNames))", "Filter for LDAP groups")
 	rootCmd.Flags().StringVar(&ldapConfig.UserFilter, "ldap_userfilter", "(|(objectclass=user)(objectclass=person)(objectclass=inetOrgPerson)(objectclass=organizationalPerson))", "Filter for LDAP users")
 	rootCmd.Flags().StringVar(&ldapConfig.BaseDN, "ldap_basedn", "dc=example,dc=org", "BaseDN to use in search")
@@ -86,7 +86,7 @@ func init() {
 	rootCmd.Flags().StringVar(&scimConfig.EndpointURL, "scim_endpoint", "", "SCIM server endpoint")
 	rootCmd.Flags().StringVar(&scimConfig.Token, "scim_token", "", "Authentication (Bearer) token to SCIM endpoint")
 	rootCmd.Flags().BoolVar(&scimConfig.DryRun, "scim_dryrun", true, "Execute dry run that just prints out the messages that would have been sent to server")
-	rootCmd.Flags().BoolVar(&scimConfig.BulkSupported, "scim_bulk_supported", false, "SCIM endpoint bulk support. If not supported, objects are synced one by one")
+	rootCmd.Flags().BoolVar(&scimConfig.BulkSupported, "scim_bulk_supported", false, "SCIM endpoint bulk support. If not supported, objects are synced one by one on parallel.")
 }
 
 // initConfig reads in config file and ENV variables if set.

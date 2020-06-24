@@ -24,7 +24,9 @@ func (idMap *IDMap) LoadIDMap() error {
 
 // ExportIDMap exports ID mapping to given file as YAML
 func (idMap *IDMap) ExportIDMap() error {
+	idMap.MappingMutex.RLock()
 	marshalled, err := yaml.Marshal(idMap.Mapping)
+	idMap.MappingMutex.RUnlock()
 	if err != nil {
 		return err
 	}

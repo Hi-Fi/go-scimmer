@@ -1,12 +1,28 @@
 package scim
 
-// import (
-// 	"encoding/json"
-// 	"fmt"
-// 	"testing"
+import (
+	"encoding/json"
+	"fmt"
+	"testing"
 
-// 	"github.com/hi-fi/go-scimmer/pkg/model"
-// )
+	"github.com/hi-fi/go-scimmer/pkg/model"
+)
+
+func TestPatchOpCreation(t *testing.T) {
+	modelGroup := model.Group{
+		CommonName: "TestGroup1",
+		Members:    []string{"test@test1.com", "test@test2.com"},
+	}
+
+	scimGroup := newGroup(&modelGroup)
+
+	patchRequest := newPatchOp("replace", Group{
+		Members: scimGroup.Members,
+	})
+	marshalled, _ := json.MarshalIndent(patchRequest, "", "    ")
+	fmt.Println(string(marshalled))
+
+}
 
 // func TestBulkRequestCreation(t *testing.T) {
 // 	modelUsers := []model.User{

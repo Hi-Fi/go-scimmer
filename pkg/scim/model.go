@@ -57,8 +57,8 @@ type Email struct {
 type Group struct {
 	ID                string   `json:"id,omitempty"`
 	DisplayName       string   `json:"displayName,omitempty"`
-	Members           []Member `json:"members,omitempty"`
-	Schemas           []string `json:"schema,omitempty"`
+	Members           []Member `json:"members"`
+	Schemas           []string `json:"schemas,omitempty"`
 	distinguishedName string
 }
 
@@ -85,20 +85,26 @@ type Member struct {
 }
 
 type PatchOp struct {
-	Schemas    []string         `json:"schema"`
-	Operations []PatchOperation `json:"Operations"`
+	Schemas    []string         `json:"schemas"`
+	Operations []PatchOperation `json:"Operations,omitempty"`
 }
 
-func newPatchOp() PatchOp {
+func newPatchOp(operation string, value interface{}) PatchOp {
 	patchOp := PatchOp{
 		Schemas: []string{"urn:ietf:params:scim:api:messages:2.0:PatchOp"},
+		Operations: []PatchOperation{
+			{
+				Op:    operation,
+				Value: value,
+			},
+		},
 	}
 	return patchOp
 }
 
 type PatchOperation struct {
 	Op    string      `json:"op"`
-	Value interface{} `json:"value"`
+	Value interface{} `json:"value,omitempty"`
 }
 
 type BulkOperation struct {
@@ -109,7 +115,7 @@ type BulkOperation struct {
 }
 
 type BulkRequest struct {
-	Schemas    []string        `json:"schema"`
+	Schemas    []string        `json:"schemas"`
 	Operations []BulkOperation `json:"Operations"`
 }
 
