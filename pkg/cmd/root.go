@@ -26,6 +26,7 @@ import (
 	"github.com/hi-fi/go-scimmer/pkg/scim"
 
 	homedir "github.com/mitchellh/go-homedir"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -33,6 +34,7 @@ var cfgFile string
 var ldapConfig ldap.Config
 var scimConfig scim.Config
 var modelConfig model.IDMap
+var cmdConfig Config
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -45,6 +47,15 @@ if only to preauthorized systems.
 Currently supports LDAP as a source. SCIM target needs to support token
 authentication. `,
 	Run: func(cmd *cobra.Command, args []string) {
+		if cmdConfig.JsonLogging {
+			log.SetFormatter(&log.JSONFormatter{})
+		}
+		logLevel, err := log.ParseLevel(cmdConfig.LogLevel)
+		if err != nil {
+			log.Infof("Incorrect log level (%s) given. Setting loglevel to info", cmdConfig.LogLevel)
+			logLevel = log.InfoLevel
+		}
+		log.SetLevel(logLevel)
 		users, groups := ldapConfig.LoadUsersAndGroups()
 		modelConfig.EnrichUsersAndGroupsWithScimIDs(users, groups)
 		scimConfig.SyncIdentities(users, groups, &modelConfig)
@@ -72,6 +83,8 @@ func init() {
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.Flags().BoolVar(&cmdConfig.JsonLogging, "json_logging", false, "Log in JSON format")
+	rootCmd.Flags().StringVar(&cmdConfig.LogLevel, "log_level", log.InfoLevel.String(), "Logging level. Possible values panic, fatal, error, warn, info, debug, trace.")
 	rootCmd.Flags().StringVar(&ldapConfig.Host, "ldap_host", "localhost", "LDAP server host")
 	rootCmd.Flags().IntVar(&ldapConfig.Port, "ldap_port", 389, "LDAP server host")
 	rootCmd.Flags().StringVar(&ldapConfig.UserDN, "ldap_user", "", "User (DN) to bind to LDAP server. Needs only read righs.")

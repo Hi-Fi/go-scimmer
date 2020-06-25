@@ -2,13 +2,33 @@ package scim
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/hi-fi/go-scimmer/pkg/model"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPatchOpCreation(t *testing.T) {
+	expected := `{
+	"schemas": [
+		"urn:ietf:params:scim:api:messages:2.0:PatchOp"
+	],
+	"Operations": [
+		{
+			"op": "replace",
+			"value": {
+				"members": [
+					{
+						"value": "test@test1.com"
+					},
+					{
+						"value": "test@test2.com"
+					}
+				]
+			}
+		}
+	]
+}`
 	modelGroup := model.Group{
 		CommonName: "TestGroup1",
 		Members:    []string{"test@test1.com", "test@test2.com"},
@@ -19,35 +39,6 @@ func TestPatchOpCreation(t *testing.T) {
 	patchRequest := newPatchOp("replace", Group{
 		Members: scimGroup.Members,
 	})
-	marshalled, _ := json.MarshalIndent(patchRequest, "", "    ")
-	fmt.Println(string(marshalled))
-
+	marshalled, _ := json.MarshalIndent(patchRequest, "", "\t")
+	assert.Equal(t, expected, string(marshalled), "Requests should be same.")
 }
-
-// func TestBulkRequestCreation(t *testing.T) {
-// 	modelUsers := []model.User{
-// 		{
-// 			FirstName: "Test",
-// 			LastName:  "Test1",
-// 			Username:  "test@test1.com",
-// 			Email:     "test@test1.com",
-// 		},
-// 		{
-// 			FirstName: "Test",
-// 			LastName:  "Test2",
-// 			Username:  "test@test2.com",
-// 			Email:     "test@test2.com",
-// 		},
-// 	}
-
-// 	modelGroups := []model.Group{
-// 		{
-// 			CommonName: "TestGroup1",
-// 			Members:    []string{"test@test1.com", "test@test2.com"},
-// 		},
-// 	}
-// 	idMap := fillIdMap(modelUsers, modelGroups)
-// 	bulkRequest := handleNewIdentities(idMap, modelUsers, modelGroups)
-// 	marshalled, _ := json.MarshalIndent(bulkRequest, "", "    ")
-// 	fmt.Println(string(marshalled))
-// }

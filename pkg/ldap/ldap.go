@@ -2,9 +2,9 @@ package ldap
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/hi-fi/go-scimmer/pkg/model"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/ldap.v3"
 )
 
@@ -140,6 +140,11 @@ func openBindedLDAPConnection(c *Config) (*ldap.Conn, error) {
 	if err != nil {
 		return conn, err
 	}
-	err = conn.Bind(c.UserDN, c.Password)
+	if len(c.Password) > 0 {
+		err = conn.Bind(c.UserDN, c.Password)
+	} else {
+		log.Info("No password provided, making unauthnenticated bind.")
+		err = conn.UnauthenticatedBind(c.UserDN)
+	}
 	return conn, err
 }
