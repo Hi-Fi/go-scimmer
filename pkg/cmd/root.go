@@ -20,6 +20,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/hi-fi/go-scimmer/pkg/ldap"
 	"github.com/hi-fi/go-scimmer/pkg/model"
@@ -47,7 +48,7 @@ if only to preauthorized systems.
 Currently supports LDAP as a source. SCIM target needs to support token
 authentication. `,
 	Run: func(cmd *cobra.Command, args []string) {
-		if cmdConfig.JsonLogging {
+		if cmdConfig.JSONLogging {
 			log.SetFormatter(&log.JSONFormatter{})
 		}
 		logLevel, err := log.ParseLevel(cmdConfig.LogLevel)
@@ -74,6 +75,11 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
+	// Variables also from environment
+
+	viper.SetEnvPrefix("scimmer")
+	viper.AutomaticEnv()
+
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
@@ -83,7 +89,7 @@ func init() {
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	rootCmd.Flags().BoolVar(&cmdConfig.JsonLogging, "json_logging", false, "Log in JSON format")
+	rootCmd.Flags().BoolVar(&cmdConfig.JSONLogging, "json_logging", false, "Log in JSON format")
 	rootCmd.Flags().StringVar(&cmdConfig.LogLevel, "log_level", log.InfoLevel.String(), "Logging level. Possible values panic, fatal, error, warn, info, debug, trace.")
 	rootCmd.Flags().StringVar(&ldapConfig.Host, "ldap_host", "localhost", "LDAP server host")
 	rootCmd.Flags().IntVar(&ldapConfig.Port, "ldap_port", 389, "LDAP server host")
@@ -95,11 +101,18 @@ func init() {
 	rootCmd.Flags().StringVar(&ldapConfig.UserFilter, "ldap_userfilter", "(|(objectclass=user)(objectclass=person)(objectclass=inetOrgPerson)(objectclass=organizationalPerson))", "Filter for LDAP users")
 	rootCmd.Flags().StringVar(&ldapConfig.BaseDN, "ldap_basedn", "dc=example,dc=org", "BaseDN to use in search")
 	rootCmd.Flags().StringVar(&ldapConfig.UsernameAttribute, "ldap_username_attribute", "uid", "Attribute to be used as username in the external system")
-	rootCmd.Flags().StringVar(&modelConfig.FilePath, "output", "", "File to write internal and external id mapping to. Note that this file needs to be kept safe to allow updates to objects.")
+	rootCmd.Flags().StringVar(&modelConfig.FilePath, "output", "scim_id_map.yaml", "File to write internal and external id mapping to. Note that this file needs to be kept safe to allow updates to objects.")
 	rootCmd.Flags().StringVar(&scimConfig.EndpointURL, "scim_endpoint", "", "SCIM server endpoint")
 	rootCmd.Flags().StringVar(&scimConfig.Token, "scim_token", "", "Authentication (Bearer) token to SCIM endpoint")
 	rootCmd.Flags().BoolVar(&scimConfig.DryRun, "scim_dryrun", true, "Execute dry run that just prints out the messages that would have been sent to server")
 	rootCmd.Flags().BoolVar(&scimConfig.BulkSupported, "scim_bulk_supported", false, "SCIM endpoint bulk support. If not supported, objects are synced one by one on parallel.")
+
+	// Updating flags from viper (environment variables)
+	rootCmd.Flags().VisitAll(func(f *pflag.Flag) {
+		if viper.IsSet(f.Name) && viper.GetString(f.Name) != "" {
+			rootCmd.Flags().Set(f.Name, viper.GetString(f.Name))
+		}
+	})
 }
 
 // initConfig reads in config file and ENV variables if set.

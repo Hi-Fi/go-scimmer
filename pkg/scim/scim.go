@@ -15,7 +15,7 @@ import (
 
 func (c *Config) SyncIdentities(users []*model.User, groups []*model.Group, idMap *model.IDMap) (updatedUsers []model.User, updatedGroups []model.Group, err error) {
 	if c.BulkSupported {
-		c.generateBulkRequest(idMap, users, groups)
+		c.GenerateBulkRequest(idMap, users, groups)
 	} else {
 		c.syncUsers(idMap, users)
 		idMap.ExportIDMap()
