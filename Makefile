@@ -30,5 +30,5 @@ build:
 	rm -f bin/$(OPERATOR_NAME)
 	GO111MODULE=on go build -v -i -o bin/$(OPERATOR_NAME) ./cmd
 
-build-image: build-linux-amd64
+build-image:
 	docker build -t $(IMAGE):latest .

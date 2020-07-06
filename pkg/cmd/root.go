@@ -75,11 +75,6 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	// Variables also from environment
-
-	viper.SetEnvPrefix("scimmer")
-	viper.AutomaticEnv()
-
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
@@ -106,13 +101,6 @@ func init() {
 	rootCmd.Flags().StringVar(&scimConfig.Token, "scim_token", "", "Authentication (Bearer) token to SCIM endpoint")
 	rootCmd.Flags().BoolVar(&scimConfig.DryRun, "scim_dryrun", true, "Execute dry run that just prints out the messages that would have been sent to server")
 	rootCmd.Flags().BoolVar(&scimConfig.BulkSupported, "scim_bulk_supported", false, "SCIM endpoint bulk support. If not supported, objects are synced one by one on parallel.")
-
-	// Updating flags from viper (environment variables)
-	rootCmd.Flags().VisitAll(func(f *pflag.Flag) {
-		if viper.IsSet(f.Name) && viper.GetString(f.Name) != "" {
-			rootCmd.Flags().Set(f.Name, viper.GetString(f.Name))
-		}
-	})
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -130,13 +118,20 @@ func initConfig() {
 
 		// Search config in home directory with name ".go-scimmer" (without extension).
 		viper.AddConfigPath(home)
-		viper.SetConfigName(".go-scimmer")
+		viper.SetConfigName(".go-scimmer.yaml")
+		viper.SetConfigType("yaml")
 	}
 
+	viper.SetEnvPrefix("scimmer")
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+		log.Println("Using config file:", viper.ConfigFileUsed())
 	}
+	rootCmd.Flags().VisitAll(func(f *pflag.Flag) {
+		if viper.IsSet(f.Name) && viper.GetString(f.Name) != "" {
+			rootCmd.Flags().Set(f.Name, viper.GetString(f.Name))
+		}
+	})
 }
