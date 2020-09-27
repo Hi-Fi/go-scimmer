@@ -8,6 +8,21 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// LoadUser serves webhook that sends user updates one by one
+func (c *Config) LoadUser(email string) []*model.User {
+	l, err := openBindedLDAPConnection(c)
+	if err != nil {
+		// error in ldap bind
+		log.Fatal(err)
+	}
+	defer l.Close()
+
+	newConfig := *c
+	newConfig.UserFilter = fmt.Sprintf("(mail=%s)", email)
+
+	return loadUsers(l, &newConfig)
+}
+
 // LoadUsersAndGroups Connects to LDAP and loads all users and groups
 func (c *Config) LoadUsersAndGroups() ([]*model.User, []*model.Group) {
 	l, err := openBindedLDAPConnection(c)

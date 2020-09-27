@@ -4,4 +4,5 @@ package cmd
 type Config struct {
 	JSONLogging bool
 	LogLevel    string
+	StartServer bool
 }

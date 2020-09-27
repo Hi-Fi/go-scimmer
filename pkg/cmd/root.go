@@ -25,6 +25,7 @@ import (
 	"github.com/hi-fi/go-scimmer/pkg/ldap"
 	"github.com/hi-fi/go-scimmer/pkg/model"
 	"github.com/hi-fi/go-scimmer/pkg/scim"
+	"github.com/hi-fi/go-scimmer/pkg/www"
 
 	homedir "github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
@@ -35,6 +36,7 @@ var cfgFile string
 var ldapConfig ldap.Config
 var scimConfig scim.Config
 var modelConfig model.IDMap
+var serverConfig www.Config
 var cmdConfig Config
 
 // rootCmd represents the base command when called without any subcommands
@@ -57,9 +59,13 @@ authentication. `,
 			logLevel = log.InfoLevel
 		}
 		log.SetLevel(logLevel)
-		users, groups := ldapConfig.LoadUsersAndGroups()
-		modelConfig.EnrichUsersAndGroupsWithScimIDs(users, groups)
-		scimConfig.SyncIdentities(users, groups, &modelConfig)
+		if cmdConfig.StartServer {
+			serverConfig.StartServer(ldapConfig, scimConfig, &modelConfig)
+		} else {
+			users, groups := ldapConfig.LoadUsersAndGroups()
+			modelConfig.EnrichUsersAndGroupsWithScimIDs(users, groups)
+			scimConfig.SyncIdentities(users, groups, &modelConfig)
+		}
 	},
 }
 
@@ -104,6 +110,9 @@ func init() {
 	rootCmd.Flags().BoolVar(&scimConfig.BulkSupported, "scim_bulk_supported", false, "SCIM endpoint bulk support. If not supported, objects are synced one by one on parallel.")
 	rootCmd.Flags().BoolVar(&scimConfig.UploadDisabled, "scim_upload_disabled", true, "Enable or disable users with 'disabled' status.")
 	rootCmd.Flags().BoolVar(&scimConfig.DeleteDisabled, "scim_delete_disabled", false, "Delete users that are marked as 'disabled' instead of updating those.")
+	rootCmd.Flags().BoolVar(&cmdConfig.StartServer, "start_server", false, "Start webserver that can handle the update webhooks fron directory systems.")
+	rootCmd.Flags().IntVar(&serverConfig.Port, "server_port", 8888, "Port for webserver would answer from")
+
 }
 
 // initConfig reads in config file and ENV variables if set.

@@ -13,7 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (c *Config) SyncIdentities(users []*model.User, groups []*model.Group, idMap *model.IDMap) (updatedUsers []model.User, updatedGroups []model.Group, err error) {
+func (c *Config) SyncIdentities(users []*model.User, groups []*model.Group, idMap *model.IDMap) (err error) {
 	if c.BulkSupported {
 		c.generateBulkRequest(idMap, users, groups)
 	} else {
@@ -27,14 +27,17 @@ func (c *Config) SyncIdentities(users []*model.User, groups []*model.Group, idMa
 
 func (c *Config) syncUsers(idMap *model.IDMap, users []*model.User) {
 	var wg sync.WaitGroup
-	log.Infof("Dry run: %v", c.DryRun)
+	log.Debugf("Dry run: %v", c.DryRun)
 	for _, user := range users {
 		if !c.DryRun {
 			wg.Add(1)
 			go c.postAndUpdateUser(newUser(user), idMap, &wg)
 		} else if user.ScimID == "" {
-			mapping := idMap.Mapping[user.DistinguishedName]
-			mapping.ScimID = fmt.Sprintf("dry_run_%s", model.EncodeText(user.DistinguishedName))
+			idMap.Mapping[user.DistinguishedName] = model.MappedId{
+				ScimID:    fmt.Sprintf("dry_run_%s", model.EncodeText(user.DistinguishedName)),
+				Checksum:  model.CalculateUserChecksum(user),
+				UpdatedAt: time.Now(),
+			}
 		}
 	}
 	wg.Wait()
@@ -105,11 +108,12 @@ func (c *Config) postAndUpdateUser(user *User, idMap *model.IDMap, wg *sync.Wait
 
 	log.Debugf("Handled user %s with target system ID %s", user.UserName, user.ID)
 	idMap.MappingMutex.Lock()
-	mapping := idMap.Mapping[user.distinguishedName]
-	mapping.ScimID = user.ID
-	mapping.UpdatedAt = time.Now()
-	// This is needed in the list to handle group memberships correctly
-	mapping.Active = user.Active
+	idMap.Mapping[user.distinguishedName] = model.MappedId{
+		ScimID:    user.ID,
+		UpdatedAt: time.Now(),
+		// This is needed in the list to handle group memberships correctly
+		Active: user.Active,
+	}
 	idMap.MappingMutex.Unlock()
 
 }

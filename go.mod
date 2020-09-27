@@ -3,6 +3,7 @@ module github.com/hi-fi/go-scimmer
 go 1.15
 
 require (
+	github.com/gin-gonic/gin v1.6.3
 	github.com/go-ldap/ldap/v3 v3.2.3
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/sirupsen/logrus v1.6.0

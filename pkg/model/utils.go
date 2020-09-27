@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )
 
@@ -31,10 +32,13 @@ func (idMap *IDMap) ExportIDMap() error {
 	marshalled, err := yaml.Marshal(idMap.Mapping)
 	idMap.MappingMutex.RUnlock()
 	if err != nil {
+		log.Errorf("Marhalling of idmap failed. Error: %v", err)
 		return err
 	}
+	log.Debugf("Writing id mapping to %s", idMap.FilePath)
 	err = ioutil.WriteFile(idMap.FilePath, marshalled, 0644)
 	if err != nil {
+		log.Errorf("Writing of idmap failed. Error: %v", err)
 		return err
 	}
 	return nil
