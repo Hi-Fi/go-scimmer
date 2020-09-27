@@ -29,14 +29,6 @@ func TestScimIDUpdate(t *testing.T) {
 			Username:          "test@test1.com",
 			Email:             "test@test1.com",
 		},
-		{
-			DistinguishedName: "cn=Testi Useri,dc=example,dc=org",
-			ScimID:            "tuseri_scim_id",
-			FirstName:         "Test",
-			LastName:          "Test2",
-			Username:          "test@test2.com",
-			Email:             "test@test2.com",
-		},
 	}
 
 	config := &Config{
