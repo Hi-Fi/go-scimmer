@@ -1,15 +1,18 @@
 package model
 
 import (
+	"crypto/sha256"
 	"encoding/base64"
+	"fmt"
 	"io/ioutil"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 )
 
 // LoadIDMap loads ID mapping from given file as YAML
 func (idMap *IDMap) LoadIDMap() error {
-	idMap.Mapping = make(map[string]string)
+	idMap.Mapping = make(map[string]MappedId)
 
 	data, err := ioutil.ReadFile(idMap.FilePath)
 	if err != nil {
@@ -41,10 +44,16 @@ func (idMap *IDMap) ExportIDMap() error {
 func (idMap *IDMap) EnrichUsersAndGroupsWithScimIDs(users []*User, groups []*Group) {
 	idMap.LoadIDMap()
 	for _, user := range users {
-		user.ScimID = idMap.Mapping[user.DistinguishedName]
+		mapping := idMap.Mapping[user.DistinguishedName]
+		user.ScimID = mapping.ScimID
+		user.Checksum = mapping.Checksum
+		user.UpdatedAt = mapping.UpdatedAt
 	}
 	for _, group := range groups {
-		group.ScimID = idMap.Mapping[group.DistinguishedName]
+		mapping := idMap.Mapping[group.DistinguishedName]
+		group.ScimID = mapping.ScimID
+		group.Checksum = mapping.Checksum
+		group.UpdatedAt = mapping.UpdatedAt
 	}
 }
 
@@ -60,4 +69,14 @@ func DecodeText(encodedText string) string {
 		return encodedText
 	}
 	return string(decoded)
+}
+
+// CalculateUserChecksum generates sha256 hash from user
+func CalculateUserChecksum(user *User) string {
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s_%s_%s_%s", user.FirstName, user.LastName, user.Email, user.Username))))
+}
+
+// CalculateGroupChecksum generates sha256 hash from user
+func CalculateGroupChecksum(group *Group) string {
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s_%s", group.CommonName, strings.Join(group.Members[:], ",")))))
 }

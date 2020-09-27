@@ -73,6 +73,7 @@ func Execute() {
 }
 
 func init() {
+	log.Info("Initing...")
 	cobra.OnInitialize(initConfig)
 
 	// Here you will define your flags and configuration settings.
@@ -101,6 +102,8 @@ func init() {
 	rootCmd.Flags().StringVar(&scimConfig.Token, "scim_token", "", "Authentication (Bearer) token to SCIM endpoint")
 	rootCmd.Flags().BoolVar(&scimConfig.DryRun, "scim_dryrun", true, "Execute dry run that just prints out the messages that would have been sent to server")
 	rootCmd.Flags().BoolVar(&scimConfig.BulkSupported, "scim_bulk_supported", false, "SCIM endpoint bulk support. If not supported, objects are synced one by one on parallel.")
+	rootCmd.Flags().BoolVar(&scimConfig.UploadDisabled, "scim_upload_disabled", true, "Enable or disable users with 'disabled' status.")
+	rootCmd.Flags().BoolVar(&scimConfig.DeleteDisabled, "scim_delete_disabled", false, "Delete users that are marked as 'disabled' instead of updating those.")
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -126,9 +129,12 @@ func initConfig() {
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		log.Println("Using config file:", viper.ConfigFileUsed())
+	if err := viper.ReadInConfig(); err != nil {
+		log.Errorf("Issue with config file %s. Error: %v", viper.ConfigFileUsed(), err)
+	} else {
+		log.Info("Using config file:", viper.ConfigFileUsed())
 	}
+
 	rootCmd.Flags().VisitAll(func(f *pflag.Flag) {
 		if viper.IsSet(f.Name) && viper.GetString(f.Name) != "" {
 			rootCmd.Flags().Set(f.Name, viper.GetString(f.Name))

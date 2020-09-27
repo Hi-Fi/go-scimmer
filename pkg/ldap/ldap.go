@@ -3,9 +3,9 @@ package ldap
 import (
 	"fmt"
 
+	"github.com/go-ldap/ldap/v3"
 	"github.com/hi-fi/go-scimmer/pkg/model"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/ldap.v3"
 )
 
 // LoadUsersAndGroups Connects to LDAP and loads all users and groups

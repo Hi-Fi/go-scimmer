@@ -8,7 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (c *Config) GenerateBulkRequest(idMap *model.IDMap, users []*model.User, groups []*model.Group) BulkRequest {
+func (c *Config) generateBulkRequest(idMap *model.IDMap, users []*model.User, groups []*model.Group) BulkRequest {
 	bulkRequest := newBulkRequest()
 	for _, user := range users {
 		scimUser := newUser(user)
@@ -19,31 +19,44 @@ func (c *Config) GenerateBulkRequest(idMap *model.IDMap, users []*model.User, gr
 			bulkOperation.BulkID = model.EncodeText(user.DistinguishedName)
 			bulkOperation.Method = "POST"
 			bulkOperation.Path = "/Users"
+		} else {
+			bulkOperation.Method = "PUT"
+			bulkOperation.Path = fmt.Sprintf("/Users/%s", user.ScimID)
 		}
 		bulkRequest.Operations = append(bulkRequest.Operations, bulkOperation)
 	}
 
 	for _, group := range groups {
-		if group.ScimID == "" {
-			newGroup := newGroup(group)
-			for index := range newGroup.Members {
-				// Trying to first add from idMap
-				if len(idMap.Mapping[model.EncodeText(newGroup.Members[index].Value)]) > 0 {
-					newGroup.Members[index].Value = idMap.Mapping[model.EncodeText(newGroup.Members[index].Value)]
-				} else {
-					newGroup.Members[index].Value = fmt.Sprintf("bulkId:%s", model.EncodeText(newGroup.Members[index].Value))
-				}
+		scimGroup := newGroup(group)
+		for index := range scimGroup.Members {
+			// Trying to first add from idMap
+			if len(idMap.Mapping[model.EncodeText(scimGroup.Members[index].Value)].ScimID) > 0 {
+				scimGroup.Members[index].Value = idMap.Mapping[model.EncodeText(scimGroup.Members[index].Value)].ScimID
+			} else {
+				scimGroup.Members[index].Value = fmt.Sprintf("bulkId:%s", model.EncodeText(scimGroup.Members[index].Value))
 			}
+		}
 
-			bulkOperation := BulkOperation{
+		var bulkOperation BulkOperation
+		if group.ScimID == "" {
+			bulkOperation = BulkOperation{
 				BulkID: model.EncodeText(group.DistinguishedName),
 				Method: "POST",
 				Path:   "/Groups",
-				Data:   newGroup,
+				Data:   scimGroup,
 			}
-			bulkRequest.Operations = append(bulkRequest.Operations, bulkOperation)
+		} else {
+			bulkOperation = BulkOperation{
+				Method: "PATCH",
+				Path:   fmt.Sprintf("/Groups/%s", group.ScimID),
+				Data: newPatchOp("replace", Group{
+					Members: scimGroup.Members,
+				}),
+			}
 		}
+		bulkRequest.Operations = append(bulkRequest.Operations, bulkOperation)
 	}
+
 	if c.DryRun {
 		pretty, _ := json.MarshalIndent(bulkRequest, "", "    ")
 		log.Infof("BulkRequest: %v\n", string(pretty))

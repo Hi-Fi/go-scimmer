@@ -15,7 +15,7 @@ import (
 
 func (c *Config) SyncIdentities(users []*model.User, groups []*model.Group, idMap *model.IDMap) (updatedUsers []model.User, updatedGroups []model.Group, err error) {
 	if c.BulkSupported {
-		c.GenerateBulkRequest(idMap, users, groups)
+		c.generateBulkRequest(idMap, users, groups)
 	} else {
 		c.syncUsers(idMap, users)
 		idMap.ExportIDMap()
@@ -33,7 +33,8 @@ func (c *Config) syncUsers(idMap *model.IDMap, users []*model.User) {
 			wg.Add(1)
 			go c.postAndUpdateUser(newUser(user), idMap, &wg)
 		} else if user.ScimID == "" {
-			idMap.Mapping[user.DistinguishedName] = fmt.Sprintf("dry_run_%s", model.EncodeText(user.DistinguishedName))
+			mapping := idMap.Mapping[user.DistinguishedName]
+			mapping.ScimID = fmt.Sprintf("dry_run_%s", model.EncodeText(user.DistinguishedName))
 		}
 	}
 	wg.Wait()
@@ -59,9 +60,17 @@ func (c *Config) postAndUpdateUser(user *User, idMap *model.IDMap, wg *sync.Wait
 	}
 
 	if user.ID == "" {
+		if !user.Active && !c.UploadDisabled {
+			log.Debugf("User %s disabled, not uploading it", user.distinguishedName)
+			return
+		}
 		request, err = http.NewRequest(http.MethodPost, targetURL, bytes.NewReader(payload))
 	} else {
-		request, err = http.NewRequest(http.MethodPut, targetURL, bytes.NewReader(payload))
+		if !user.Active && c.DeleteDisabled {
+			request, err = http.NewRequest(http.MethodDelete, targetURL, nil)
+		} else {
+			request, err = http.NewRequest(http.MethodPut, targetURL, bytes.NewReader(payload))
+		}
 	}
 
 	if err != nil {
@@ -96,7 +105,11 @@ func (c *Config) postAndUpdateUser(user *User, idMap *model.IDMap, wg *sync.Wait
 
 	log.Debugf("Handled user %s with target system ID %s", user.UserName, user.ID)
 	idMap.MappingMutex.Lock()
-	idMap.Mapping[user.distinguishedName] = user.ID
+	mapping := idMap.Mapping[user.distinguishedName]
+	mapping.ScimID = user.ID
+	mapping.UpdatedAt = time.Now()
+	// This is needed in the list to handle group memberships correctly
+	mapping.Active = user.Active
 	idMap.MappingMutex.Unlock()
 
 }
@@ -109,7 +122,8 @@ func (c *Config) syncGroups(idMap *model.IDMap, groups []*model.Group) {
 			wg.Add(1)
 			go c.postAndUpdateGroup(newGroup(group), idMap, &wg)
 		} else if group.ScimID == "" {
-			idMap.Mapping[group.DistinguishedName] = fmt.Sprintf("dry_run_%s", model.EncodeText(group.DistinguishedName))
+			mapping := idMap.Mapping[group.DistinguishedName]
+			mapping.ScimID = fmt.Sprintf("dry_run_%s", model.EncodeText(group.DistinguishedName))
 		}
 	}
 	wg.Wait()
@@ -119,23 +133,36 @@ func (c *Config) postAndUpdateGroup(group *Group, idMap *model.IDMap, wg *sync.W
 	defer wg.Done()
 	// Wait that all members are done to external system.
 	membersDone := 0
+	newMembers := []Member{}
 	for membersDone < len(group.Members) {
-		for index, member := range group.Members {
+		for _, member := range group.Members {
 			idMap.MappingMutex.RLock()
-			mappedValue := idMap.Mapping[member.Value]
+			mappedValue := idMap.Mapping[member.Value].ScimID
+			active := idMap.Mapping[member.Value].Active
 			idMap.MappingMutex.RUnlock()
-			if mappedValue != "" {
-				group.Members[index].Value = mappedValue
+			if !active && (c.UploadDisabled || c.DeleteDisabled) {
+				membersDone = membersDone + 1
+				log.Debugf("Not including member %s to %s as member status is inactive. %d done", member.Value, group.DisplayName, membersDone)
+			} else if mappedValue != "" {
+				newMembers = append(newMembers, Member{
+					DisplayName: member.DisplayName,
+					Ref:         member.Ref,
+					Value:       mappedValue,
+				})
 				membersDone = membersDone + 1
 				log.Debugf("Mapped value for member %s to %s. %d done", member.Value, mappedValue, membersDone)
 			}
 		}
 		if membersDone < len(group.Members) {
 			//Wait a bit to allow missing members to be created
-			log.Debugf("%d members out of %d in group %s created to external system. Waiting...", membersDone, len(group.Members), group.DisplayName)
+			log.Debugf("%d members out of %d in group %s validated for sync. Waiting a moment to make a new check...", membersDone, len(group.Members), group.DisplayName)
 			time.Sleep(time.Second)
+			// reset, as we go through whole list again
+			membersDone = 0
+			newMembers = []Member{}
 		}
 	}
+	group.Members = newMembers
 	targetURL := fmt.Sprintf("%s/Groups/%s", c.EndpointURL, group.ID)
 	var (
 		response *http.Response
@@ -206,6 +233,8 @@ func (c *Config) postAndUpdateGroup(group *Group, idMap *model.IDMap, wg *sync.W
 
 	log.Debugf("Handled group %s with target system ID %s", group.DisplayName, group.ID)
 	idMap.MappingMutex.Lock()
-	idMap.Mapping[group.distinguishedName] = group.ID
+	mapping := idMap.Mapping[group.distinguishedName]
+	mapping.ScimID = group.ID
+	mapping.UpdatedAt = time.Now()
 	idMap.MappingMutex.Unlock()
 }
